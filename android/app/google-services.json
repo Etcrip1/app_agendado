@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "89880548433",
+    "firebase_url": "https://app-agendado.firebaseio.com",
+    "project_id": "app-agendado",
+    "storage_bucket": "app-agendado.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:89880548433:android:775b297dec349276cd1470",
+        "android_client_info": {
+          "package_name": "pedro.pedro.app_agendado"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "89880548433-4gumv33p4nv1ln9uk4i50qul9flqpqkb.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAxG75zeQGCX4FWZeg1ZvYUIgwISGvYNUY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "89880548433-4gumv33p4nv1ln9uk4i50qul9flqpqkb.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
