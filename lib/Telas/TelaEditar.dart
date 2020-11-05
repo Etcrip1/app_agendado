@@ -1,4 +1,6 @@
+import 'package:app_agendado/Telas/TelaPrincipal.dart';
 import 'package:app_agendado/model/Evento.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import "../model/Evento.dart";
 import "package:intl/intl.dart";
@@ -6,9 +8,8 @@ import '../commom/AppColors.dart';
 
 class TelaEditar extends StatefulWidget {
   final Evento evento;
-  final Function function;
 
-  const TelaEditar({this.evento, this.function});
+  const TelaEditar({this.evento});
 
   @override
   _TelaEditarState createState() => _TelaEditarState();
@@ -16,6 +17,20 @@ class TelaEditar extends StatefulWidget {
 
 class _TelaEditarState extends State<TelaEditar> {
   DateTime _dataEvento;
+  TimeOfDay _horaEvento;
+  DateTime _adicionarEvento;
+  var _controller = TextEditingController();
+
+  Future<void> updateFromDatabase(String nome, DateTime data) {
+    CollectionReference eventos =
+        FirebaseFirestore.instance.collection('eventos');
+    return eventos
+        .doc(widget.evento.id)
+        .update({'data': data, 'nome': nome})
+        .then((value) => print("Evento Updated ${widget.evento.id}"))
+        .catchError((error) => print("Failed to update event: $error"));
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,9 +65,10 @@ class _TelaEditarState extends State<TelaEditar> {
                       ],
                     )),
                 TextFormField(
+                    controller: _controller,
                     decoration: const InputDecoration(
-                  hintText: 'Novo nome',
-                )),
+                      hintText: 'Novo nome',
+                    )),
                 Container(
                   alignment: Alignment.center,
                   margin: EdgeInsets.fromLTRB(0, 20, 0, 0),
@@ -70,6 +86,20 @@ class _TelaEditarState extends State<TelaEditar> {
                         setState(() {
                           _dataEvento = _dataEvento;
                         });
+                        _horaEvento = await showTimePicker(
+                          context: context,
+                          initialTime: TimeOfDay.now(),
+                        );
+                        if (_dataEvento != null && _horaEvento != null) {
+                          setState(() {
+                            _adicionarEvento = DateTime(
+                                _dataEvento.year,
+                                _dataEvento.month,
+                                _dataEvento.day,
+                                _horaEvento.hour,
+                                _horaEvento.minute);
+                          });
+                        }
                       }),
                 ),
                 Container(
@@ -87,7 +117,24 @@ class _TelaEditarState extends State<TelaEditar> {
                     margin: EdgeInsets.all(25),
                     alignment: Alignment.center,
                     child: FlatButton(
-                      onPressed: () => print("ola"),
+                      onPressed: () {
+                        if (_controller.text.isEmpty) {
+                          setState(() {
+                            _controller.text = widget.evento.nome;
+                          });
+                        }
+
+                        if (_adicionarEvento == null) {
+                          setState(() {
+                            _adicionarEvento = widget.evento.data;
+                          });
+                        }
+                        updateFromDatabase(_controller.text, _adicionarEvento);
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => TelaPrincipal()));
+                      },
                       color: AppColors.primaryColor,
                       child: Text(
                         "Confirmar",

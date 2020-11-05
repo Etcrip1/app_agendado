@@ -1,53 +1,108 @@
-import 'package:app_agendado/Telas/TelaDeletar.dart';
-import 'package:app_agendado/Telas/TelaEditar.dart';
+import 'package:app_agendado/Telas/TelaAdicionarEvento.dart';
+import 'package:app_agendado/Telas/WidgetEvento.dart';
 import 'package:app_agendado/model/Evento.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../commom/AppColors.dart';
 
 class TelaEventos extends StatefulWidget {
-  final List<Evento> eventos;
-  final Function function;
-
-  TelaEventos(this.eventos, this.function);
+  TelaEventos();
 
   @override
   _TelaEventosState createState() => _TelaEventosState();
-
-  _openEventoEditor(BuildContext context, Evento e, Function f) {
-    showModalBottomSheet(
-        context: context,
-        builder: (_) {
-          return TelaEditar(
-            evento: e,
-            function: f,
-          );
-        });
-  }
-
-  _openEventoDelete(BuildContext context, Evento e, Function f) {
-    showModalBottomSheet(
-        context: context,
-        builder: (_) {
-          return TelaDeletar(
-            evento: e,
-            function: f,
-          );
-        });
-  }
 }
 
 class _TelaEventosState extends State<TelaEventos> {
-  orderByName() {
-    setState(() {
-      widget.eventos.sort((a, b) => a.nome.compareTo(b.nome));
-    });
+  bool ordenar;
+
+  _generateWidgetEventosOrderByDate() {
+    return StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('eventos')
+            .where('data', isGreaterThan: DateTime.now())
+            .orderBy('data')
+            .snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          List<Widget> list = [];
+          if (snapshot.hasData) {
+            snapshot.data.docs.forEach((element) {
+              list.add(WidgetEvento(
+                  listar: false,
+                  altura: 60,
+                  evento: Evento(
+                      element.id, element['data'].toDate(), element['nome'])));
+            });
+
+            if (list.isEmpty)
+              return _generateAddButton();
+            else
+              return Column(children: list);
+          } else {
+            return Container();
+          }
+        });
   }
 
-  orderByData() {
+  _generateWidgetEventosOrderByName() {
+    return StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('eventos')
+            .where('data', isGreaterThan: DateTime.now())
+            .snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          List<Widget> list = [];
+          List<Evento> list2 = [];
+          if (snapshot.hasData) {
+            snapshot.data.docs.forEach((element) {
+              list2.add(Evento(
+                  element.id, element['data'].toDate(), element['nome']));
+            });
+
+            list2.sort((x, y) {
+              return x.nome.toLowerCase().compareTo(y.nome.toLowerCase());
+            });
+
+            for (Evento evento in list2) {
+              list.add(WidgetEvento(listar: false, altura: 60, evento: evento));
+            }
+
+            if (list2.isEmpty)
+              return _generateAddButton();
+            else
+              return Column(children: list);
+          } else {
+            return Container();
+          }
+        });
+  }
+
+  _generateAddButton() {
+    return Container(
+      child: Column(children: [
+        SizedBox(height: 220),
+        Center(
+          child: IconButton(
+            onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TelaAdicionarEvento(),
+                )),
+            icon: Icon(
+              Icons.add,
+              size: 60,
+            ),
+          ),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  void initState() {
     setState(() {
-      widget.eventos.sort((a, b) => a.data.compareTo(b.data));
+      ordenar = false;
     });
+    super.initState();
   }
 
   @override
@@ -58,6 +113,19 @@ class _TelaEventosState extends State<TelaEventos> {
             "Eventos",
             style: TextStyle(color: AppColors.secondaryColor),
           ),
+          actions: [
+            IconButton(
+                icon: Icon(
+                  Icons.add,
+                  size: 40,
+                  color: AppColors.secondaryColor,
+                ),
+                onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TelaAdicionarEvento(),
+                    )))
+          ],
         ),
         body: Column(children: [
           Card(
@@ -70,17 +138,26 @@ class _TelaEventosState extends State<TelaEventos> {
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
                       IconButton(
-                          icon: Icon(
-                            Icons.calendar_today,
-                            size: 50,
-                          ),
-                          onPressed: () => orderByData()),
+                        icon: Icon(
+                          Icons.calendar_today,
+                          size: 50,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            ordenar = false;
+                          });
+                        },
+                      ),
                       IconButton(
                           icon: Icon(
                             Icons.text_format,
                             size: 50,
                           ),
-                          onPressed: () => orderByName()),
+                          onPressed: () {
+                            setState(() {
+                              ordenar = true;
+                            });
+                          }),
                     ],
                   )
                 ],
@@ -91,50 +168,12 @@ class _TelaEventosState extends State<TelaEventos> {
             elevation: 5,
             child: Container(
               height: 430,
-              child: ListView(
-                children: widget.eventos.map((e) {
-                  return FlatButton(
-                    onLongPress: () {
-                      widget._openEventoDelete(context, e, () => print("ola"));
-                    },
-                    onPressed: () => widget._openEventoEditor(
-                        context, e, () => print("ola")),
-                    child: Container(
-                      height: 80,
-                      width: double.infinity,
-                      child: Card(
-                        color: AppColors.primaryColor,
-                        elevation: 5,
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Container(
-                              decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: AppColors.secondaryColor,
-                                      width: 2)),
-                              child: Text(
-                                "${DateFormat('d - MM - yyyy').format(e.data)}",
-                                style: TextStyle(
-                                    fontSize: 20,
-                                    color: AppColors.secondaryColor,
-                                    fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                            Container(
-                                child: Text("${e.nome}",
-                                    style: TextStyle(
-                                        fontSize: 20,
-                                        color: AppColors.tertiaryColor)))
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+              child: SingleChildScrollView(
+                  child: ordenar
+                      ? _generateWidgetEventosOrderByName()
+                      : _generateWidgetEventosOrderByDate()),
             ),
-          ),
+          )
         ]));
   }
 }

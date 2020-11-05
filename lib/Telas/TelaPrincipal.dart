@@ -1,6 +1,6 @@
 import 'package:app_agendado/Telas/TelaAdicionarEvento.dart';
 import 'package:app_agendado/Telas/TelaEventos.dart';
-import 'package:app_agendado/Telas/WidgetProximoEvento.dart';
+import 'package:app_agendado/Telas/WidgetEvento.dart';
 import 'package:app_agendado/model/Evento.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -15,12 +15,13 @@ class TelaPrincipal extends StatefulWidget {
 class _TelaPrincipalState extends State<TelaPrincipal> {
   var _calendarController = CalendarController();
   List<Evento> _events = [];
-  Evento _evento;
-  Map<DateTime, List<dynamic>> _map;
 
-  final FirebaseFirestore firestore = FirebaseFirestore.instance;
-  final CollectionReference eventos =
-      FirebaseFirestore.instance.collection('eventos');
+  @override
+  void initState() {
+    _events.clear();
+    _dataToList();
+    super.initState();
+  }
 
   mapConverter(List<Evento> lista) {
     Map<DateTime, List<dynamic>> map = new Map();
@@ -30,43 +31,111 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
     return map;
   }
 
-  List<Evento> readFirebase() {
-    List<Evento> lista = [];
+  Widget getNextEvent() {
+    return StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('eventos')
+            .where('data', isGreaterThan: DateTime.now())
+            .orderBy('data')
+            .snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          Evento evento;
+
+          if (snapshot.hasData) {
+            if (snapshot.data.docs.isNotEmpty) {
+              evento = Evento(
+                  snapshot.data.docs.first.id,
+                  snapshot.data.docs.first.get('data').toDate(),
+                  snapshot.data.docs.first.get('nome'));
+            }
+
+            if (evento != null) {
+              return WidgetEvento(
+                altura: 60,
+                evento: evento,
+                listar: false,
+              );
+            } else {
+              return WidgetEvento(
+                altura: 60,
+                evento: null,
+                listar: false,
+              );
+            }
+          } else {
+            return WidgetEvento(
+              altura: 60,
+              evento: null,
+              listar: false,
+            );
+          }
+        });
+  }
+
+  _dataToList() {
     FirebaseFirestore.instance
         .collection('eventos')
-        .get()
-        .then((QuerySnapshot querySnapshot) => {
-              querySnapshot.docs.forEach((doc) {
-                lista.add(Evento('doc.id', doc['data'].toDate(), doc['nome']));
-              })
-            });
-
-    return lista;
+        .snapshots()
+        .listen((event) {
+      _events.clear();
+      setState(() {
+        event.docs.forEach((element) {
+          if (element['data'].toDate().compareTo(DateTime.now()) == 1) {
+            _events.add(
+                Evento(element.id, element['data'].toDate(), element['nome']));
+          }
+        });
+      });
+    });
   }
 
-  Evento getNextEvent(List<Evento> lista) {
-    if (lista.isNotEmpty) {
-      List<Evento> temp = lista
-          .where((element) => element.data.isAfter(DateTime.now()))
-          .toList();
+  Widget transformDateEvento(DateTime date) {
+    return StreamBuilder(
+        stream: FirebaseFirestore.instance
+            .collection('eventos')
+            .where('data', isGreaterThanOrEqualTo: date)
+            .snapshots(),
+        builder: (BuildContext context, AsyncSnapshot<QuerySnapshot> snapshot) {
+          Evento evento;
+          if (snapshot.hasData) {
+            evento = Evento(
+                snapshot.data.docs.first.id,
+                snapshot.data.docs.first.get('data').toDate(),
+                snapshot.data.docs.first.get('nome'));
 
-      temp.sort((x, y) => x.data.compareTo(y.data));
-      return temp.first;
-    } else {
-      return null;
-    }
+            if (evento != null) {
+              return WidgetEvento(
+                altura: 60,
+                evento: evento,
+                listar: true,
+              );
+            } else {
+              return WidgetEvento(
+                altura: 60,
+                evento: null,
+                listar: true,
+              );
+            }
+          } else {
+            return WidgetEvento(
+              altura: 60,
+              evento: null,
+              listar: true,
+            );
+          }
+        });
   }
 
-  @override
-  void initState() {
-    _events = readFirebase();
-    _evento = getNextEvent(readFirebase());
-    _map = mapConverter(_events);
+  _openEvento(BuildContext context, DateTime date) {
+    showModalBottomSheet(
+        context: context,
+        builder: (_) {
+          return transformDateEvento(date);
+        });
   }
 
   @override
   Widget build(BuildContext context) {
-    initState();
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
@@ -92,10 +161,14 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
           child: Container(
             child: Column(
               children: [
-                WidgetProximoEvento(
-                    texto: "Próximo evento", altura: 60, evento: _evento),
+                getNextEvent(),
                 TableCalendar(
-                    calendarController: _calendarController, events: _map),
+                  calendarController: _calendarController,
+                  events: mapConverter(_events),
+                  onDaySelected: (day, events) {
+                    return _openEvento(context, day);
+                  },
+                ),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
@@ -122,7 +195,7 @@ class _TelaPrincipalState extends State<TelaPrincipal> {
                         onPressed: () => Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => TelaEventos(_events, null),
+                              builder: (context) => new TelaEventos(),
                             )))
                   ],
                 )

@@ -1,3 +1,4 @@
+import 'package:app_agendado/Telas/TelaPrincipal.dart';
 import 'package:app_agendado/model/Evento.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -50,7 +51,13 @@ class TelaDeletar extends StatelessWidget {
                 children: [
                   FlatButton(
                     color: AppColors.primaryColor,
-                    onPressed: () => print(""),
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => TelaPrincipal()));
+                      return function();
+                    },
                     child: Container(
                       child: Text(
                         "Confirmar",
@@ -60,7 +67,7 @@ class TelaDeletar extends StatelessWidget {
                   ),
                   FlatButton(
                     color: AppColors.primaryColor,
-                    onPressed: () => print(""),
+                    onPressed: () => Navigator.pop(context),
                     child: Container(
                       child: Text(
                         "Cancelar",
